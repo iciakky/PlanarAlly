@@ -30,6 +30,7 @@ import {
 import UI from "./ui/UI.vue";
 // oxlint-disable-next-line import/no-unassigned-import
 import "./api/events";
+import { setupAutomation, hideUi as automationHideUi } from "./automation";
 
 let throttledMove: (event: MouseEvent) => void = (_event: MouseEvent) => {};
 let throttledTouchMove: (event: TouchEvent) => void = (_event: TouchEvent) => {};
@@ -69,6 +70,8 @@ export default defineComponent({
                 throttledTouchMoveSet = false;
             }
         });
+
+        setupAutomation();
 
         onMounted(async () => {
             // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -115,6 +118,7 @@ export default defineComponent({
         }
 
         return {
+            automationHideUi,
             drop: handleDropEvent,
             gameState,
             mouseDown,
@@ -147,7 +151,7 @@ export default defineComponent({
                 @touchend="touchEnd"
             ></div>
         </div>
-        <UI ref="ui" />
+        <UI v-if="!automationHideUi" ref="ui" />
         <!-- <DebugInfo /> -->
     </div>
 </template>

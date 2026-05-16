@@ -6,6 +6,7 @@ from aiohttp import web
 
 from .api import http
 from .api.http import auth, mods, notifications, rooms, server, users, version
+from .api.rest import setup_rest_routes
 from .app import app as main_app
 from .config import cfg
 from .storage import get_storage
@@ -74,6 +75,9 @@ main_app.router.add_get(f"{subpath}/api/version", version.get_version)
 main_app.router.add_get(f"{subpath}/api/changelog", version.get_changelog)
 main_app.router.add_get(f"{subpath}/api/notifications", notifications.collect)
 main_app.router.add_post(f"{subpath}/api/mod/upload", mods.upload)
+
+# REST API routes (new)
+setup_rest_routes(main_app)
 
 TAIL_REGEX = "/{tail:(?!api).*}"
 if "dev" in sys.argv:

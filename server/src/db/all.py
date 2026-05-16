@@ -51,6 +51,16 @@ from .models.tracker import Tracker
 from .models.user import User
 from .models.user_data_block import UserDataBlock
 from .models.user_options import UserOptions
+from .models.rest_ext import (
+    ActionDeclaration,
+    ApiKey,
+    CombatExt,
+    EventLog,
+    RollLog,
+    SceneSnapshot,
+    ShapeExternalId,
+    TokenExt,
+)
 from .signals import *  # noqa: F403
 
 ALL_NORMAL_MODELS: list[type[BaseDbModel]] = [
@@ -103,6 +113,15 @@ ALL_NORMAL_MODELS: list[type[BaseDbModel]] = [
     UserDataBlock,
     UserOptions,
     User,
+    # REST API extension models
+    ActionDeclaration,
+    ApiKey,
+    CombatExt,
+    EventLog,
+    RollLog,
+    SceneSnapshot,
+    ShapeExternalId,
+    TokenExt,
 ]
 
 ALL_VIEWS: list[type[BaseViewModel]] = [

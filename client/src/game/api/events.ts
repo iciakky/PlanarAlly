@@ -14,6 +14,7 @@ import "../systems/logic/door/events";
 import "../systems/logic/tp/events";
 import "../systems/markers/events";
 import "../systems/notes/events";
+import "../systems/referenceMarkers/events";
 import "../systems/room/events";
 import "../systems/trackers/events";
 import "../systems/variants/events";

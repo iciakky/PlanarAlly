@@ -7,6 +7,9 @@ import { positionSystem } from "./systems/position";
 import { positionState } from "./systems/position/state";
 import { floorSystem } from "./systems/floors";
 import { gameState } from "./systems/game/state";
+import { locationSettingsState } from "./systems/settings/location/state";
+import { referenceMarkerSystem } from "./systems/referenceMarkers";
+import type { ReferenceMarkerData } from "./systems/referenceMarkers/state";
 
 const params = new URLSearchParams(window.location.search);
 export const isAutomationMode = params.get("automation") === "1";
@@ -28,6 +31,7 @@ let _revisionWaiters: Array<{
     timer: ReturnType<typeof setTimeout> | null;
 }> = [];
 let _listenersRegistered = false;
+let _apiKey: string | null = null;
 let _externalIdCache: Map<string, string> | null = null;
 
 function _newReadyPromise(): Promise<boolean> {
@@ -119,13 +123,25 @@ export function setupAutomation(): void {
     if (!isAutomationMode) return;
 
     if (!_listenersRegistered) {
-        socket.on("connect", () => _onReconnect());
+        socket.on("connect", () => {
+            if (_reconnectCount > 0 || _epoch > 0) _onReconnect();
+        });
         socket.on("Location.Loaded", () => _onLocationLoaded());
         socket.on("Automation.Revision", (data: { revision: number }) => _onRevisionReceived(data.revision));
         _listenersRegistered = true;
     }
 
+    const _headers = (): Record<string, string> => {
+        const h: Record<string, string> = { "Content-Type": "application/json" };
+        if (_apiKey) h["X-API-Key"] = _apiKey;
+        return h;
+    };
+
     const api = {
+        setApiKey(key: string): void {
+            _apiKey = key;
+        },
+
         ready(opts?: { timeout?: number }): Promise<boolean> {
             const timeout = opts?.timeout ?? 60000;
             return new Promise<boolean>((resolve, reject) => {
@@ -313,6 +329,141 @@ export function setupAutomation(): void {
 
         get epoch(): number {
             return _epoch;
+        },
+
+        async createMarker(opts: {
+            external_id: string;
+            x: number;
+            y: number;
+            shape?: "ring" | "arrow" | "label" | "flag";
+            label: string;
+            text?: string;
+            comment?: string;
+            colour?: string;
+            scope?: "player" | "dm";
+            target_x?: number;
+            target_y?: number;
+            render_above_fog?: boolean;
+            record?: boolean;
+            visible_to?: string[];
+        }): Promise<{ ok: boolean; status: number; body?: unknown }> {
+            const locationId = locationSettingsState.raw.activeLocation;
+            const externalId = opts.external_id;
+
+            const response = await fetch(
+                `/api/v1/scenes/${locationId}/markers/by-external-id/${encodeURIComponent(externalId)}`,
+                {
+                    method: "PUT",
+                    headers: _headers(),
+                    body: JSON.stringify({
+                        x: opts.x,
+                        y: opts.y,
+                        shape: opts.shape ?? "ring",
+                        label: opts.label,
+                        text: opts.text,
+                        comment: opts.comment,
+                        colour: opts.colour ?? "#ff4444",
+                        scope: opts.scope ?? "dm",
+                        target_x: opts.target_x,
+                        target_y: opts.target_y,
+                        render_above_fog: opts.render_above_fog ?? false,
+                        record: opts.record ?? true,
+                        visible_to: opts.visible_to ?? [],
+                    }),
+                },
+            );
+
+            if (response.ok) {
+                // Optimistic local update
+                referenceMarkerSystem.addMarker({
+                    external_id: externalId,
+                    x: opts.x,
+                    y: opts.y,
+                    target_x: opts.target_x,
+                    target_y: opts.target_y,
+                    shape: opts.shape ?? "ring",
+                    label: opts.label,
+                    text: opts.text,
+                    comment: opts.comment,
+                    colour: opts.colour ?? "#ff4444",
+                    scope: opts.scope ?? "dm",
+                    owner: "",
+                    visible_to: opts.visible_to ?? [],
+                    render_above_fog: opts.render_above_fog ?? false,
+                    record: opts.record ?? true,
+                });
+            }
+
+            let body: unknown;
+            try {
+                body = await response.json();
+            } catch {
+                // no-op
+            }
+            return { ok: response.ok, status: response.status, body };
+        },
+
+        async clearMarkers(opts?: {
+            prefix?: string;
+            scope?: "player" | "dm";
+        }): Promise<{ ok: boolean; status: number }> {
+            const locationId = locationSettingsState.raw.activeLocation;
+
+            const queryParams = new URLSearchParams();
+            if (opts?.prefix !== undefined && opts.prefix !== "") queryParams.set("prefix", opts.prefix);
+            if (opts?.scope !== undefined) queryParams.set("scope", opts.scope);
+
+            const response = await fetch(
+                `/api/v1/scenes/${locationId}/markers?${queryParams.toString()}`,
+                { method: "DELETE", headers: _headers() },
+            );
+
+            if (response.ok) {
+                // Local cleanup
+                if (opts?.prefix !== undefined && opts.prefix !== "") {
+                    referenceMarkerSystem.clearByPrefix(opts.prefix);
+                } else if (opts?.scope !== undefined) {
+                    referenceMarkerSystem.clearByScope(opts.scope);
+                } else {
+                    referenceMarkerSystem.clear("full-loading");
+                }
+            }
+
+            return { ok: response.ok, status: response.status };
+        },
+
+        async getRecentMapRefs(opts?: {
+            since_revision?: number;
+            player?: string;
+        }): Promise<{ ok: boolean; status: number; data?: unknown }> {
+            const locationId = locationSettingsState.raw.activeLocation;
+
+            const queryParams = new URLSearchParams();
+            if (opts?.since_revision !== undefined) queryParams.set("since_revision", String(opts.since_revision));
+            if (opts?.player !== undefined && opts.player !== "") queryParams.set("player", opts.player);
+
+            const response = await fetch(
+                `/api/v1/scenes/${locationId}/map-refs?${queryParams.toString()}`,
+                { headers: _headers() },
+            );
+
+            let data: unknown;
+            if (response.ok) {
+                try {
+                    data = await response.json();
+                } catch {
+                    // no-op
+                }
+            }
+            return { ok: response.ok, status: response.status, data };
+        },
+
+        toggleMarkerLayer(visible: boolean): void {
+            referenceMarkerSystem.setOverlayVisible(visible);
+        },
+
+        getMarkers(): ReferenceMarkerData[] {
+            return referenceMarkerSystem.getAllMarkers();
         },
     };
 

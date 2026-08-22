@@ -28,6 +28,9 @@ import {
 } from "./tools/events";
 // import DebugInfo from "./ui/DebugInfo.vue";
 import UI from "./ui/UI.vue";
+import MarkerOverlay from "./ui/markers/MarkerOverlay.vue";
+import CoordinateHover from "./ui/markers/CoordinateHover.vue";
+import MarkerPlacementDialog from "./ui/markers/MarkerPlacementDialog.vue";
 // oxlint-disable-next-line import/no-unassigned-import
 import "./api/events";
 import { setupAutomation, hideUi as automationHideUi } from "./automation";
@@ -38,7 +41,7 @@ let throttledTouchMove: (event: TouchEvent) => void = (_event: TouchEvent) => {}
 export default defineComponent({
     // eslint-disable-next-line vue/multi-word-component-names
     name: "Game",
-    components: { UI }, // DebugInfo
+    components: { UI, MarkerOverlay, CoordinateHover, MarkerPlacementDialog }, // DebugInfo
     beforeRouteEnter(to) {
         coreStore.setLoading(true);
         createConnection(to);
@@ -151,6 +154,9 @@ export default defineComponent({
                 @touchend="touchEnd"
             ></div>
         </div>
+        <MarkerOverlay />
+        <CoordinateHover />
+        <MarkerPlacementDialog />
         <UI v-if="!automationHideUi" ref="ui" />
         <!-- <DebugInfo /> -->
     </div>

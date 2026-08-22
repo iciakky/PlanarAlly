@@ -563,7 +563,11 @@
                     "show_initiative": "Show initiative",
                     "create_spawn_location": "Create spawn location",
                     "new_spawn_question": "What should this spawn location be named?",
-                    "new_spawn_title": "Creating new spawn location"
+                    "new_spawn_title": "Creating new spawn location",
+                    "place_marker": "Place Marker",
+                    "hide_marker_text": "Hide Marker Text",
+                    "show_marker_text": "Show Marker Text",
+                    "delete_marker": "Delete Marker \"{label}\""
                 },
                 "DrawTool": {
                     "foreground_color": "Foreground colour",

@@ -215,6 +215,32 @@ async def load_location(sid: str, location: Location, *, complete=False):
         room=sid,
     )
 
+    # 8b. Load Reference Markers (live pointing)
+    from ..rest.markers import _marker_to_dict
+
+    try:
+        from ...db.models.rest_ext.reference_marker import ReferenceMarker as RefMarker
+
+        is_dm = pr.role == Role.DM or pr.room.creator_id == pr.player_id
+        ref_markers = []
+        for rm in RefMarker.select().where(RefMarker.location == location):
+            if not is_dm:
+                if rm.scope == "dm":
+                    continue
+                import json as _json
+                try:
+                    vis = _json.loads(rm.visible_to)
+                except Exception:
+                    vis = []
+                if pr.player.name not in vis and rm.owner_id != pr.player_id:
+                    continue
+            ref_markers.append(_marker_to_dict(rm))
+
+        if ref_markers:
+            await _send_game("ReferenceMarker.Set", ref_markers, room=sid)
+    except Exception:
+        pass
+
     # 9. Load Assets
 
     if complete and IS_DM:

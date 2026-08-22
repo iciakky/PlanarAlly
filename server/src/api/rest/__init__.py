@@ -16,6 +16,9 @@ from . import combats
 from . import diagnostics
 from . import events
 from . import fog
+from . import grid_options
+from . import map_refs
+from . import markers
 from . import options
 from . import players
 from . import quick
@@ -178,3 +181,16 @@ def setup_rest_routes(app: web.Application) -> None:
 
     # Visibility (Automation API)
     app.router.add_get("/api/v1/scenes/{uuid}/visibility", visibility.scene_visibility)
+
+    # Reference Markers (Live Pointing)
+    app.router.add_route("PUT", "/api/v1/scenes/{scene_id}/markers/by-external-id/{external_id}", markers.upsert_marker)
+    app.router.add_route("DELETE", "/api/v1/scenes/{scene_id}/markers/by-external-id/{external_id}", markers.delete_marker)
+    app.router.add_route("DELETE", "/api/v1/scenes/{scene_id}/markers", markers.batch_delete_markers)
+    app.router.add_get("/api/v1/scenes/{scene_id}/markers", markers.list_markers)
+
+    # Map References (Live Pointing)
+    app.router.add_post("/api/v1/scenes/{scene_id}/map-refs", map_refs.create_map_ref)
+    app.router.add_get("/api/v1/scenes/{scene_id}/map-refs", map_refs.query_map_refs)
+
+    # Grid Options (Live Pointing)
+    app.router.add_route("PATCH", "/api/v1/scenes/{scene_id}/grid-options", grid_options.update_grid_options)

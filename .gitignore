@@ -53,3 +53,11 @@ docs/.doctrees
 
 # Intellij
 **/.idea/**
+
+# Claude Code / ck semantic search
+.ck/
+.claude/
+CLAUDE.md
+
+# local-only working docs (keep off GitHub)
+docs/

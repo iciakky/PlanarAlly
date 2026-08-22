@@ -19,8 +19,14 @@ import { propertiesSystem } from "../../systems/properties";
 import { getProperties } from "../../systems/properties/state";
 import { locationSettingsSystem } from "../../systems/settings/location";
 import { locationSettingsState } from "../../systems/settings/location/state";
+import { coreStore } from "../../../store/core";
+import { sendDeleteReferenceMarker } from "../../api/emits/referenceMarkers";
+import { hitTestMarker } from "../../rendering/markerOverlay";
+import { referenceMarkerSystem } from "../../systems/referenceMarkers";
+import { referenceMarkerState } from "../../systems/referenceMarkers/state";
 import { initiativeStore } from "../initiative/state";
 import { openCreateTokenDialog } from "../tokendialog/state";
+import { markerPlacementState } from "../markers/placementState";
 
 import { defaultContextLeft, defaultContextTop, showDefaultContextMenu } from "./state";
 
@@ -100,9 +106,41 @@ function showTokenDialog(): boolean {
     return true;
 }
 
+function placeMarker(): boolean {
+    markerPlacementState.open(defaultContextLeft.value, defaultContextTop.value);
+    return true;
+}
+
+function toggleMarkerText(): boolean {
+    referenceMarkerSystem.toggleTextVisible();
+    return true;
+}
+
+function deleteNearestMarker(): boolean {
+    const gPos = l2g(toLP(defaultContextLeft.value, defaultContextTop.value));
+    const username = coreStore.state.username;
+    const ownMarkers = referenceMarkerSystem.getOwnMarkers(username);
+    const hit = hitTestMarker(gPos.x, gPos.y, ownMarkers);
+    if (hit) {
+        sendDeleteReferenceMarker(hit.external_id);
+        referenceMarkerSystem.removeMarker(hit.external_id);
+    }
+    return true;
+}
+
+function nearestOwnMarker(): { label: string; external_id: string } | null {
+    const gPos = l2g(toLP(defaultContextLeft.value, defaultContextTop.value));
+    const username = coreStore.state.username;
+    const ownMarkers = referenceMarkerSystem.getOwnMarkers(username);
+    const hit = hitTestMarker(gPos.x, gPos.y, ownMarkers);
+    if (hit) return { label: hit.label, external_id: hit.external_id };
+    return null;
+}
+
 const sections = computed<Section[]>(() => {
     if (!showDefaultContextMenu.value) return [];
-    return [
+
+    const items: Section[] = [
         {
             title: t("game.ui.tools.DefaultContext.bring_pl"),
             action: bringPlayers,
@@ -121,7 +159,27 @@ const sections = computed<Section[]>(() => {
             action: createSpawnLocation,
             disabled: !gameState.reactive.isDm,
         },
+        {
+            title: t("game.ui.tools.DefaultContext.place_marker"),
+            action: placeMarker,
+        },
+        {
+            title: referenceMarkerState.reactive.textVisible
+                ? t("game.ui.tools.DefaultContext.hide_marker_text")
+                : t("game.ui.tools.DefaultContext.show_marker_text"),
+            action: toggleMarkerText,
+        },
     ];
+
+    const nearest = nearestOwnMarker();
+    if (nearest) {
+        items.push({
+            title: t("game.ui.tools.DefaultContext.delete_marker", { label: nearest.label }),
+            action: deleteNearestMarker,
+        });
+    }
+
+    return items;
 });
 </script>
 

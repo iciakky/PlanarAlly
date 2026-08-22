@@ -19,6 +19,7 @@ def load_socket_commands():
         mods,  # noqa: F401
         note,  # noqa: F401
         player,  # noqa: F401
+        reference_marker,  # noqa: F401
         room,  # noqa: F401
         shape,  # noqa: F401
         user,  # noqa: F401
